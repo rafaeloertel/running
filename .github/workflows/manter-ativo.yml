@@ -1,0 +1,33 @@
+name: Manter as rotinas ativas
+
+on:
+  schedule:
+    - cron: "23 10 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  renovar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Renovar a atividade do repositório
+        run: |
+          set -eu
+          ultimo=$(git log -1 --format=%ct)
+          dias=$(( ($(date +%s) - ultimo) / 86400 ))
+          echo "Último commit há ${dias} dia(s)."
+          if [ "${dias}" -lt 45 ]; then
+            echo "Abaixo de 45 dias: nada a fazer."
+            exit 0
+          fi
+          mkdir -p .github
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > .github/ultimo-ping.txt
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/ultimo-ping.txt
+          git commit -m "Manutenção: renova a atividade do repositório"
+          git push
