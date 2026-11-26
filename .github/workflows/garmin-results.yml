@@ -1,0 +1,41 @@
+name: Buscar resultados do Garmin
+
+on:
+  schedule:
+    # a cada 2 horas, das 6h às 22h de Brasília (9h–1h UTC)
+    - cron: "10 9-23/2 * * *"
+    - cron: "10 1 * * *"
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Quantos dias para trás buscar"
+        default: "10"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: garmin-results
+  cancel-in-progress: false
+
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      # grava direto no banco do app; o site mostra na hora, sem republicar
+      - name: Buscar atividades e recuperação
+        env:
+          GARMIN_TOKENS: ${{ secrets.GARMIN_TOKENS }}
+          GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
+          GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: python tools/garmin_results.py --days ${{ github.event.inputs.days || '10' }}
